@@ -7,16 +7,14 @@ document.addEventListener('DOMContentLoaded', function init() {
 	const h_rows = Math.floor(height / box_size);
 	const h_cols = Math.floor(width / box_size);
 
-	const game_state_of_truth = [];
 	const current_board = Array.from(new Array(h_rows), () =>
 		Array.from(new Array(h_cols), () => '')
 	);
 
 	crossword_data.then((data) => {
-		game_began({
+		fill_board({
 			container,
 			crossword_data: data,
-			game_state_of_truth,
 			h_rows: current_board.length,
 			h_cols: current_board[0].length,
 			current_board,
@@ -106,10 +104,9 @@ function get_data() {
 		});
 }
 
-function game_began({
+function fill_board({
 	container,
 	crossword_data,
-	game_state_of_truth,
 	h_rows,
 	h_cols,
 	current_board,
@@ -120,17 +117,16 @@ function game_began({
 	if (puzzle.answer.length <= h_rows || puzzle.answer.length <= h_cols) {
 		return put_puzzle({
 			container,
+			crossword_data,
 			puzzle,
-			game_state_of_truth,
 			h_rows,
 			h_cols,
 			current_board,
 		});
 	} else {
-		game_began({
+		fill_board({
 			container,
 			crossword_data,
-			game_state_of_truth,
 			h_rows,
 			h_cols,
 			current_board,
@@ -140,8 +136,8 @@ function game_began({
 
 function put_puzzle({
 	container,
+	crossword_data,
 	puzzle,
-	game_state_of_truth,
 	h_rows,
 	h_cols,
 	current_board,
@@ -149,43 +145,48 @@ function put_puzzle({
 	if (!(puzzle.answer.length <= h_rows)) {
 		return find_vertical_space({
 			container,
+			crossword_data,
 			puzzle,
-			game_state_of_truth,
 			current_board,
+			direction: 'vertical'
 		});
 	}
 
 	if (!(puzzle.answer.length <= h_cols)) {
 		return find_horizontal_space({
 			container,
+			crossword_data,
 			puzzle,
-			game_state_of_truth,
 			current_board,
+			direction: 'horizontal'
 		});
 	}
 
 	if (Math.random() > 0.5) {
 		return find_horizontal_space({
 			container,
+			crossword_data,
 			puzzle,
-			game_state_of_truth,
 			current_board,
+			direction: 'both'
 		});
 	} else {
 		return find_vertical_space({
 			container,
+			crossword_data,
 			puzzle,
-			game_state_of_truth,
 			current_board,
+			direction: 'both'
 		});
 	}
 }
 
 function find_vertical_space({
 	container,
+	crossword_data,
 	puzzle,
-	game_state_of_truth,
 	current_board,
+	direction
 }) {
 	const available_slots = [];
 	const row_len = current_board.length - 1;
@@ -223,14 +224,15 @@ function find_vertical_space({
 			}
 		}
 	}
-	return fill_answers({ container, puzzle, current_board, available_slots });
+	return fill_answers({ container, crossword_data, puzzle, current_board, available_slots, direction });
 }
 
 function find_horizontal_space({
 	container,
+	crossword_data,
 	puzzle,
-	game_state_of_truth,
 	current_board,
+	direction
 }) {
 	const available_slots = [];
 	const row_len = current_board.length - 1;
@@ -268,11 +270,12 @@ function find_horizontal_space({
 			}
 		}
 	}
-	return fill_answers({ container, puzzle, current_board, available_slots });
+	return fill_answers({ container, crossword_data, puzzle, current_board, available_slots, direction });
 }
 
-function fill_answers({ container, puzzle, current_board, available_slots }) {
+function fill_answers({ container, crossword_data, puzzle, current_board, available_slots, direction }) {
 	const exact_matching_slot = [];
+	
 	available_slots = available_slots.filter((slots) => {
 		if (slots.r1 == slots.r2) {
 			return slots.c2 - slots.c1 >= puzzle.answer.length;
@@ -309,9 +312,7 @@ function fill_answers({ container, puzzle, current_board, available_slots }) {
 			}
 		}
 		if (exact_matching_slot.length > 0) {
-			const index = Math.floor(Math.random() * exact_matching_slot.length);
-			const position = exact_matching_slot[index];
-			update_current_board({ container, current_board, puzzle, position });
+			find_match({ container, crossword_data, current_board, puzzle, exact_matching_slot, direction });
 		} else {
 			console.log('exact matching slot is empty');
 		}
@@ -320,33 +321,98 @@ function fill_answers({ container, puzzle, current_board, available_slots }) {
 	}
 }
 
-function update_current_board({ container, current_board, puzzle, position }) {
+function find_match({ container, crossword_data, current_board, puzzle, exact_matching_slot, direction }) {
+	const row_len = current_board.length;
+	const col_len = current_board[0].length;
+	const answer_arr = puzzle.answer.split('');
+	console.log(direction);
+	switch (direction) {
+		case 'horizontal':
+			// horizontal block
+			break;
+		
+		case 'vertical':
+			for (let col = 0; col < row_len; col++) {
+				for (let row = 0; row < col_len; row++) {
+					if (answer_arr.includes(current_board[row][col])) {
+						for (let i = 0; i < answer_arr.length; i++) {
+							if (answer_arr[i] == current_board[row][col]) {
+								// handle vertical word match
+							}
+						}
+					}
+				}
+			}
+			break;
+	
+		default:
+			// default block
+			break;
+	}
+
+	console.log(puzzle.answer);
+	console.log(current_board);
+	
+	const index = Math.floor(Math.random() * exact_matching_slot.length);
+	const position = exact_matching_slot[index];
+	update_current_board({ container, crossword_data, current_board, puzzle, position });
+}
+
+function update_current_board({ container, crossword_data, current_board, puzzle, position }) {
 	let answer = puzzle.answer.split('');
 	if (position.r1 == position.r2) {
 		for (let i = position.c2; i >= position.c1; i--) {
 			current_board[position.r1][i] = answer.pop();
 		}
-	} else if (position.c1 == position.c2) {
+		try {
+			current_board[position.r1][position.c1 - 1] = '#';
+		} catch (e) {
+			console.log(e);
+		}
+		try {
+			current_board[position.r1][position.c2 + 1] = '#';
+		} catch (e) {
+			console.log(e);
+		}
+	} else {
 		for (let i = position.r2; i >= position.r1; i--) {
 			current_board[i][position.c1] = answer.pop();
 		}
+		try {
+			current_board[position.r1 - 1][position.c1] = '#';
+		} catch (e) {
+			console.log(e);
+		}
+		try {
+			current_board[position.r2 + 1][position.c1] = '#';
+		} catch (e) {
+			console.log(e);
+		}
 	}
 	render_current_board({ container, current_board });
+	fill_board({
+		container,
+		crossword_data,
+		h_rows: current_board.length,
+		h_cols: current_board[0].length,
+		current_board,
+	});
 }
 
 function render_current_board({ container, current_board }) {
 	const table = container.querySelector('table');
-
 	for (let i = 0, row; (row = table.rows[i]); i++) {
 		for (let j = 0, col; (col = row.cells[j]); j++) {
 			if (current_board[i][j] != '') {
+				if (current_board[i][j] == '#') {
+					col.classList.add('block');
+				}
 				col.textContent = current_board[i][j];
 				col.contentEditable = true;
 				let span = document.createElement('span');
 				span.contentEditable = false;
 				span.textContent = i + ', ' + j;
 				col.appendChild(span);
-				row.appendChild(col);
 			}
 		}
 	}

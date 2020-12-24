@@ -56,3 +56,7 @@ td:focus,
 td:active {
 	border: red 2px solid;
 }
+
+.block{
+	background-color: #000;
+}
